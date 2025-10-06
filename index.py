@@ -1,7 +1,8 @@
 import requests
 from collections import defaultdict
 
-TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6IjdlOTExMGNmLWE0ZGYtNDk5Ni1iZjAzLTNlM2RkMDI0NWY0ZCIsImlhdCI6MTc1NDE3Njk4OCwic3ViIjoiZGV2ZWxvcGVyL2ViOTczZmIwLTEwYjQtMjM5Yi0zNWZjLTFlODQ0MDc4ZWYwYSIsInNjb3BlcyI6WyJjbGFzaCJdLCJsaW1pdHMiOlt7InRpZXIiOiJkZXZlbG9wZXIvc2lsdmVyIiwidHlwZSI6InRocm90dGxpbmcifSx7ImNpZHJzIjpbIjE4OS4yNy4xNzIuNzYiXSwidHlwZSI6ImNsaWVudCJ9XX0.nuXJE2mdc5TrBX9L-TclJT4tDmcnyxNp4JTW4Mo2wjoOoNz3CV7L8xmxqljxX1AyTn7cxASLI3cJg9usDIj9Bg"
+# SEU TOKEN - NÃO PRECISA MUDAR
+TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6ImJjMGZhMDZmLWExNDYtNDk0OC05OTdiLTE1Y2M5ZTRjMGIwYiIsImlhdCI6MTc1OTc4MTI1OSwic3ViIjoiZGV2ZWxvcGVyL2ViOTczZmIwLTEwYjQtMjM5Yi0zNWZjLTFlODQ0MDc4ZWYwYSIsInNjb3BlcyI6WyJjbGFzaCJdLCJsaW1pdHMiOlt7InRpZXIiOiJkZXZlbG9wZXIvc2lsdmVyIiwidHlwZSI6InRocm90dGxpbmcifSx7ImNpZHJzIjpbIjE3OS4yMjIuMjM4LjE1NyJdLCJ0eXBlIjoiY2xpZW50In1dfQ.PWK_oSiYMXEs0WLzOx5Ju2BeaORpuSePI4v0seYuCyoMsyFaHeLiViPoHb41trpB6oSdbN3B3344jYmJktFKSQ"
 
 CLAN_TAG = "#2G9CPRO90"
 
@@ -10,78 +11,61 @@ HEADERS = {
 }
 
 def url_encode_tag(tag):
+    """Converte a tag # a para o formato de URL."""
     return tag.replace('#', '%23')
 
-def get_war_log(clan_tag):
-    url = f"https://api.clashofclans.com/v1/clans/{url_encode_tag(clan_tag)}/warlog"
+def get_clan_info(clan_tag):
+    """Busca informações detalhadas de um clã, incluindo a lista de membros."""
+    url = f"https://api.clashofclans.com/v1/clans/{url_encode_tag(clan_tag)}"
+    print(f">>> Buscando informações do clã {clan_tag}...")
+    
     response = requests.get(url, headers=HEADERS)
-    print("Status code:", response.status_code)
-    print("Response text (resumido):", response.text[:500])  # imprime os primeiros 500 caracteres para não lotar
+    
     if response.status_code == 200:
+        print(">>> Informações recebidas com sucesso!")
         return response.json()
     else:
-        print(f"Erro ao buscar histórico de guerras: {response.status_code} - {response.text}")
+        print(f"!!! Erro ao buscar informações do clã: {response.status_code} - {response.text}")
         return None
 
-def analyze_players_in_warlog(war_log):
-    player_stats = defaultdict(lambda: {
-        'name': '',
-        'attacks': 0,
-        'stars': 0,
-        'destruction': 0.0
-    })
-
-    items = war_log.get('items', [])
-    print(f"Quantidade de guerras no histórico: {len(items)}")  # Debug
-
-    for war in items:
-        if 'members' not in war:
-            print("Aviso: Guerra sem membros (pode ser guerra amigável ou outro tipo). Ignorando.")
-            continue
-        for member in war.get('members', []):
-            tag = member['tag']
-            name = member.get('name', 'Unknown')
-            attacks = member.get('attacks', [])
-
-            stats = player_stats[tag]
-            stats['name'] = name
-            stats['attacks'] += len(attacks)
-            stats['stars'] += sum(a['stars'] for a in attacks)
-            stats['destruction'] += sum(a['destructionPercentage'] for a in attacks)
-
-    # Calcular médias
-    for tag, stats in player_stats.items():
-        if stats['attacks'] > 0:
-            stats['avg_stars'] = stats['stars'] / stats['attacks']
-            stats['avg_destruction'] = stats['destruction'] / stats['attacks']
-        else:
-            stats['avg_stars'] = 0
-            stats['avg_destruction'] = 0.0
-
-    return player_stats
-
-def rank_players(player_stats):
-    return sorted(player_stats.items(), key=lambda x: (x[1]['avg_stars'], x[1]['avg_destruction']), reverse=True)
-
 def main():
-    war_log = get_war_log(CLAN_TAG)
-    if not war_log:
-        print("Não foi possível obter histórico de guerras.")
+    clan_data = get_clan_info(CLAN_TAG)
+    
+    if not clan_data:
         return
 
-    player_stats = analyze_players_in_warlog(war_log)
-    if not player_stats:
-        print("Nenhum dado de jogador encontrado no histórico de guerras.")
+    clan_name = clan_data.get('name', 'N/A')
+    total_members = clan_data.get('members', 0)
+    
+    print("\n" + "="*50)
+    print(f"RELATÓRIO DO CLÃ: {clan_name}")
+    print(f"Total de Membros: {total_members}")
+    print("="*50 + "\n")
+
+    member_list = clan_data.get('memberList', [])
+
+    if not member_list:
+        print("Nenhum membro encontrado.")
         return
 
-    ranked = rank_players(player_stats)
+    # Organiza a lista de membros por cargo (Líder primeiro, etc.)
+    role_order = {'leader': 0, 'coLeader': 1, 'admin': 2, 'member': 3}
+    sorted_members = sorted(member_list, key=lambda m: role_order.get(m.get('role', 'member'), 4))
 
-    print("Ranking de jogadores pelo desempenho no histórico de guerras:\n")
-    for idx, (tag, stats) in enumerate(ranked, 1):
-        print(f"{idx}. {stats['name']} (Tag: {tag})")
-        print(f"   Ataques: {stats['attacks']}, Estrelas totais: {stats['stars']}")
-        print(f"   Média de estrelas por ataque: {stats['avg_stars']:.2f}")
-        print(f"   Média de destruição por ataque: {stats['avg_destruction']:.2f}%\n")
+    for member in sorted_members:
+        name = member.get('name', 'N/A')
+        tag = member.get('tag', 'N/A')
+        role = member.get('role', 'N/A').replace('admin', 'Ancião').replace('coLeader', 'Co-líder').replace('leader', 'Líder').replace('member', 'Membro')
+        exp_level = member.get('expLevel', 0)
+        trophies = member.get('trophies', 0)
+        league = member.get('league', {}).get('name', 'Sem Liga')
+        donations = member.get('donations', 0)
+        donations_received = member.get('donationsReceived', 0)
+
+        print(f"-> {name} (Tag: {tag})")
+        print(f"   Cargo: {role} | Nível: {exp_level}")
+        print(f"   Liga: {league} | Troféus: {trophies}")
+        print(f"   Tropas Doadas: {donations} | Recebidas: {donations_received}\n")
 
 if __name__ == "__main__":
     main()
